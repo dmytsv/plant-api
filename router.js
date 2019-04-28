@@ -15,7 +15,7 @@ module.exports = app => {
   });
 
   // Plants API
-  app.get("/api/plants", requireAuth, async (req, res, next) => {
+  app.get("/api/plants", async (req, res, next) => {
     const plants = await Plant.find({});
 
     res.json(plants);
@@ -38,10 +38,27 @@ module.exports = app => {
   });
   app.get("/api/plants/:id", requireAuth, async (req, res, next) => {
     const { id } = req.params;
-    const plant = await Plant.findOne({ _id: new ObjectId(id) });
+    const plant = await Plant.findOne({ _id: new ObjectId(id) })
+      .populate({ path: "plant.users", select: "name" })
+      .exec();
     const comments = await Comment.find({ plant: { id: new ObjectId(id) } });
+    const users = await User.find({ plant: { id: new ObjectId(id) } });
 
-    res.json({ plant, comments });
+    res.json({ plant, comments, users });
+  });
+  app.post("/api/plants/:id", requireAuth, async (req, res, next) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+    console.log(id, userId);
+    const plant = await Plant.findOne({ _id: new ObjectId(id) });
+    const user = await User.findOne({ _id: new ObjectId(userId) });
+    await Plant.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { users: [...plant.users, user] }
+    );
+
+    res.json({ plant });
+    // res.json({ id, userId });
   });
 
   // TODO Comments API
